@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Project Dashboard | Streamlit Design</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #051c2c; /* McKinsey-like Deep Blue */
+            --accent: #00A9F4;  /* Corporate Blue */
+            --bg-body: #f4f6f8;
+            --bg-card: #ffffff;
+            --text-main: #333333;
+            --text-muted: #666666;
+            --border: #e0e0e0;
+            --success: #2E7D32;
+            --warning: #ED6C02;
+            --danger: #D32F2F;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar Styling */
+        .sidebar {
+            width: 280px;
+            background-color: var(--primary);
+            color: white;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #ccc;
+            overflow-y: auto;
+        }
+
+        .brand {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 30px;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .filter-group { margin-bottom: 25px; }
+        .filter-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            opacity: 0.8;
+            font-weight: 600;
+        }
+
+        select, input[type="text"] {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 0.9rem;
+        }
+        
+        select option { background-color: var(--primary); color: white; }
+
+        .refresh-timer {
+            margin-top: auto;
+            font-size: 0.75rem;
+            opacity: 0.7;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            padding-top: 15px;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 20px 30px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        h1 { margin: 0; font-size: 1.5rem; color: var(--primary); font-weight: 600; }
+        .subtitle { font-size: 0.9rem; color: var(--text-muted); margin-top: 5px; }
+
+        /* KPI Cards */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+
+        .kpi-card {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-left: 4px solid var(--accent);
+            transition: transform 0.2s;
+        }
+        
+        .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+
+        .kpi-title { font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 5px; font-weight: 600; }
+        .kpi-value { font-size: 1.8rem; font-weight: 700; color: var(--primary); }
+        .kpi-sub { font-size: 0.8rem; margin-top: 5px; }
+
+        /* Charts Grid */
+        .charts-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            height: 350px;
+        }
+        
+        .full-width { grid-column: span 3; height: 350px; }
+        .half-width { grid-column: span 1.5; }
+        
+        .chart-card {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-header { font-size: 1rem; font-weight: 600; color: var(--primary); margin-bottom: 15px; }
+        .chart-container { flex: 1; position: relative; width: 100%; height: 100%; }
+
+        /* Table */
+        .table-container {
+            background: var(--bg-card);
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+            flex: 1;
+            min-height: 300px;
+        }
+
+        .table-header { padding: 15px 20px; border-bottom: 1px solid var(--border); font-weight: 600; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th { text-align: left; padding: 12px 20px; background-color: #f8f9fa; color: var(--text-muted); font-weight: 600; border-bottom: 2px solid var(--border); position: sticky; top: 0; }
+        td { padding: 10px 20px; border-bottom: 1px solid var(--border); }
+        tr:hover { background-color: #f0f4f8; }
+
+        .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+        .status-live { background-color: #e8f5e9; color: #2e7d32; }
+        .status-pending { background-color: #fff3e0; color: #ef6c00; }
+
+        /* Tabs for Code View */
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #ccc; }
+        .tab { padding: 10px 20px; cursor: pointer; font-weight: 600; color: var(--text-muted); border-bottom: 3px solid transparent; }
+        .tab.active { color: var(--primary); border-bottom: 3px solid var(--primary); }
+        
+        .code-view { display: none; background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: 4px; overflow-x: auto; font-family: 'Consolas', monospace; height: 100%; }
+        .code-view.active { display: block; }
+        
+        .dashboard-view { display: flex; flex-direction: column; height: 100%; }
+        .dashboard-view.active { display: flex; }
+
+        .keyword { color: #569cd6; }
+        .string { color: #ce9178; }
+        .comment { color: #6a9955; }
+        .function { color: #dcdcaa; }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+            .charts-row { grid-template-columns: 1fr; height: auto; }
+            .full-width, .half-width { grid-column: span 1; }
+        }
+        @media (max-width: 768px) {
+            body { flex-direction: column; overflow-y: auto; }
+            .sidebar { width: 100%; height: auto; flex: none; }
+            .main-content { overflow: visible; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="brand">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+            CEM Analytics
+        </div>
+
+        <div class="filter-group">
+            <div class="filter-label">City Name</div>
+            <select id="cityFilter" onchange="updateDashboard()">
+                <option value="All">All Cities</option>
+                <option value="New York">New York</option>
+                <option value="London">London</option>
+                <option value="Singapore">Singapore</option>
+                <option value="Dubai">Dubai</option>
+                <option value="Mumbai">Mumbai</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <div class="filter-label">Status</div>
+            <select id="statusFilter" onchange="updateDashboard()">
+                <option value="All">All Statuses</option>
+                <option value="Live">Live</option>
+                <option value="Not Live">Not Live</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <div class="filter-label">Timeline Month</div>
+            <select id="monthFilter" onchange="updateDashboard()">
+                <option value="All">All Months</option>
+                <option value="January">January</option>
+                <option value="February">February</option>
+                <option value="March">March</option>
+                <option value="April">April</option>
+            </select>
+        </div>
+
+        <div class="refresh-timer">
+            Next auto-refresh: <span id="timer">60</span>s
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('dashboard')">Dashboard Preview</div>
+            <div class="tab" onclick="switchTab('code')">Python Streamlit Code</div>
+        </div>
+
+        <!-- DASHBOARD VIEW -->
+        <div id="dashboardView" class="dashboard-view active">
+            <header>
+                <div>
+                    <h1>Project Execution Overview</h1>
+                    <div class="subtitle">Real-time tracking of feasibility and budget allocation</div>
+                </div>
+                <div style="font-size: 0.85rem; color: var(--text-muted);">
+                    Data Source: <strong>CEM_Master_Data.xlsx</strong>
+                </div>
+            </header>
+
+            <!-- KPIs -->
+            <section class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-title">Total Projects</div>
+                    <div class="kpi-value" id="kpi-projects">0</div>
+                    <div class="kpi-sub" style="color: var(--success);">↑ 12% vs last month</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">Total Budget Allocated</div>
+                    <div class="kpi-value" id="kpi-budget">$0M</div>
+                    <div class="kpi-sub">Global Aggregate</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">Total Active Customers</div>
+                    <div class="kpi-value" id="kpi-active">0</div>
+                    <div class="kpi-sub">Connected Sites</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">Avg Completion %</div>
+                    <div class="kpi-value" id="kpi-completion">0%</div>
+                    <div class="kpi-sub" style="color: var(--warning);">On track</div>
+                </div>
+            </section>
+
+            <!-- CHARTS -->
+            <section class="charts-row">
+                <div class="chart-card half-width">
+                    <div class="chart-header">Budget vs. Completion %</div>
+                    <div class="chart-container">
+                        <canvas id="chartBudgetCompletion"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card half-width">
+                    <div class="chart-header">City-wise Active Customers</div>
+                    <div class="chart-container">
+                        <canvas id="chartCityActive"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card full-width">
+                    <div class="chart-header">Timeline Progress (Monthwise)</div>
+                    <div class="chart-container">
+                        <canvas id="chartTimeline"></canvas>
+                    </div>
+                </div>
+            </section>
+            
+            <section class="charts-row" style="height: 300px;">
+                 <div class="chart-card half-width">
+                    <div class="chart-header">Completion % vs. Days Remaining</div>
+                    <div class="chart-container">
+                        <canvas id="chartCompletionDays"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TABLE -->
+            <section class="table-container">
+                <div class="table-header">Detailed Project Data</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>CEM Number</th>
+                            <th>City Name</th>
+                            <th>Fesibility Name</th>
+                            <th>Total H.P</th>
+                            <th>Status</th>
+                            <th>Completion %</th>
+                            <th>Days Remaining</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTableBody">
+                        <!-- Data injected via JS -->
+                    </tbody>
+                </table>
+            </section>
+        </div>
+
+        <!-- CODE VIEW -->
+        <div id="codeView" class="code-view">
+<pre>
+<span class="comment"># Run this code in a Python environment with Streamlit installed</span>
+<span class="comment"># pip install streamlit pandas plotly openpyxl</span>
+
+<span class="keyword">import</span> streamlit <span class="keyword">as</span> st
+<span class="keyword">import</span> pandas <span class="keyword">as</span> pd
+<span class="keyword">import</span> plotly.express <span class="keyword">as</span> px
+
+<span class="comment"># 1. Page Configuration</span>
+st.set_page_config(page_title=<span class="string">"CEM Dashboard"</span>, layout=<span class="string">"wide"</span>)
+
+<span class="comment"># 2. Load Data (Replace with actual Excel path)</span>
+<span class="function">@st.cache_data</span>
+<span class="keyword">def</span> <span class="function">load_data</span>():
+    <span class="comment"># Logic to read Excel file</span>
+    <span class="comment"># df = pd.read_excel("dataset.xlsx")</span>
+    
+    <span class="comment"># Generating Dummy Data for Demonstration</span>
+    data = {
+        <span class="string">'CEM Number'</span>: [f<span class="string">'CEM-{i}'</span> <span class="keyword">for</span> i <span class="keyword">in</span> range(1, 101)],
+        <span class="string">'City Name'</span>: [<span class="string">'New York'</span>, <span class="string">'London'</span>, <span class="string">'Singapore'</span>, <span class="string">'Dubai'</span>, <span class="string">'Mumbai'</span>] * 20,
+        <span class="string">'Fesibility Name'</span>: [f<span class="string">'Feas-{i}'</span> <span class="keyword">for</span> i <span class="keyword">in</span> range(100)],
+        <span class="string">'Total H.P'</span>: [50 + i*5 <span class="keyword">for</span> i <span class="keyword">in</span> range(100)],
+        <span class="string">'Active'</span>: [1, 0] * 50,
+        <span class="string">'Not Active'</span>: [0, 1] * 50,
+        <span class="string">'Allocated Budget'</span>: [10000 + i*1000 <span class="keyword">for</span> i <span class="keyword">in</span> range(100)],
+        <span class="string">'Instant Budget Requirement'</span>: [5000 + i*500 <span class="keyword">for</span> i <span class="keyword">in</span> range(100)],
+        <span class="string">'% of Completion of Work Done'</span>: [10 + (i%10)*8 <span class="keyword">for</span> i <span class="keyword">in</span> range(100)],
+        <span class="string">'Days Remaining'</span>: [30 + (i%5)*10 <span class="keyword">for</span> i <span class="keyword">in</span> range(100)],
+        <span class="string">'Status'</span>: [<span class="string">'Live'</span> <span class="keyword">if</span> i%2==0 <span class="keyword">else</span> <span class="string">'Not Live'</span> <span class="keyword">for</span> i <span class="keyword">in</span> range(100)],
+        <span class="string">'Timeline - Monthwise'</span>: [<span class="string">'Jan'</span>, <span class="string">'Feb'</span>, <span class="string">'Mar'</span>, <span class="string">'Apr'</span>]*25
+    }
+    <span class="keyword">return</span> pd.DataFrame(data)
+
+df = load_data()
+
+<span class="comment"># 3. Sidebar Filters</span>
+st.sidebar.header(<span class="string">"Dashboard Filters"</span>)
+
+city = st.sidebar.multiselect(<span class="string">"Select City"</span>, df[<span class="string">'City Name'</span>].unique(), default=df[<span class="string">'City Name'</span>].unique())
+status = st.sidebar.selectbox(<span class="string">"Select Status"</span>, [<span class="string">"All"</span>, <span class="string">"Live"</span>, <span class="string">"Not Live"</span>])
+month = st.sidebar.multiselect(<span class="string">"Select Month"</span>, df[<span class="string">'Timeline - Monthwise'</span>].unique(), default=df[<span class="string">'Timeline - Monthwise'</span>].unique())
+
+<span class="comment"># Apply Filters</span>
+df_selection = df.query(
+    <span class="string">"`City Name` == @city & `Timeline - Monthwise` == @month"</span>
+)
+<span class="keyword">if</span> status != <span class="string">"All"</span>:
+    df_selection = df_selection[df_selection[<span class="string">'Status'</span>] == status]
+
+<span class="comment"># 4. KPI Section</span>
+total_projects = df_selection.shape[0]
+total_budget = df_selection[<span class="string">'Allocated Budget'</span>].sum()
+total_active = df_selection[<span class="string">'Active'</span>].sum()
+avg_completion = df_selection[<span class="string">'% of Completion of Work Done'</span>].mean()
+
+col1, col2, col3, col4 = st.columns(4)
+<span class="keyword">with</span> col1:
+    st.metric(<span class="string">"Total Projects"</span>, f<span class="string">"{total_projects:,}"</span>)
+<span class="keyword">with</span> col2:
+    st.metric(<span class="string">"Total Budget"</span>, f<span class="string">"${total_budget:,.0f}"</span>)
+<span class="keyword">with</span> col3:
+    st.metric(<span class="string">"Active Customers"</span>, f<span class="string">"{total_active:,}"</span>)
+<span class="keyword">with</span> col4:
+    st.metric(<span class="string">"Avg Completion"</span>, f<span class="string">"{avg_completion:.1f}%"</span>)
+
+st.markdown(<span class="string">"---"</span>)
+
+<span class="comment"># 5. Charts</span>
+col_left, col_right = st.columns(2)
+
+<span class="keyword">with</span> col_left:
+    fig_budget = px.scatter(
+        df_selection, x=<span class="string">'Allocated Budget'</span>, y=<span class="string">'% of Completion of Work Done'</span>,
+        color=<span class="string">'City Name'</span>, size=<span class="string">'Total H.P'</span>, title=<span class="string">"Budget vs Completion %"</span>
+    )
+    st.plotly_chart(fig_budget, use_container_width=<span class="keyword">True</span>)
+
+<span class="keyword">with</span> col_right:
+    fig_city = px.bar(
+        df_selection.groupby(<span class="string">'City Name'</span>)[<span class="string">'Active'</span>].sum().reset_index(),
+        x=<span class="string">'City Name'</span>, y=<span class="string">'Active'</span>, title=<span class="string">"City-wise Active Customers"</span>,
+        color_discrete_sequence=[<span class="string">'#00A9F4'</span>]
+    )
+    st.plotly_chart(fig_city, use_container_width=<span class="keyword">True</span>)
+
+fig_timeline = px.line(
+    df_selection, x=<span class="string">'Timeline - Monthwise'</span>, y=<span class="string">'% of Completion of Work Done'</span>,
+    title=<span class="string">"Timeline Progress (Monthwise)"</span>, markers=<span class="keyword">True</span>
+)
+st.plotly_chart(fig_timeline, use_container_width=<span class="keyword">True</span>)
+
+<span class="comment"># 6. Table</span>
+st.dataframe(df_selection)
+
+<span class="comment"># 7. Auto Refresh</span>
+count = st_autorefresh(interval=60000, limit=None, key=<span class="string">"refresh"</span>)
+</pre>
+        </div>
+
+    </main>
+
+    <script>
+        // --- DATA GENERATION & SIMULATION ---
+        const cities = ['New York', 'London', 'Singapore', 'Dubai', 'Mumbai'];
+        const statuses = ['Live', 'Not Live'];
+        const months = ['January', 'February', 'March', 'April'];
+        let rawData = [];
+
+        function generateData() {
+            rawData = [];
+            for (let i = 0; i < 50; i++) {
+                rawData.push({
+                    cem: `CEM-${1000 + i}`,
+                    city: cities[Math.floor(Math.random() * cities.length)],
+                    feas: `Feasibility-${String.fromCharCode(65 + (i % 26))}${i}`,
+                    hp: Math.floor(Math.random() * 200) + 50,
+                    active: Math.random() > 0.3 ? 1 : 0,
+                    budget: Math.floor(Math.random() * 50000) + 10000,
+                    completion: Math.floor(Math.random() * 100),
+                    days: Math.floor(Math.random() * 60) + 5,
+                    status: statuses[Math.floor(Math.random() * statuses.length)],
+                    month: months[Math.floor(Math.random() * months.length)]
+                });
+            }
+        }
+
+        // --- CHART CONFIGURATION ---
+        let chartInstances = {};
+
+        function initCharts() {
+            // 1. Budget vs Completion (Scatter)
+            const ctx1 = document.getElementById('chartBudgetCompletion').getContext('2d');
+            chartInstances.budgetComp = new Chart(ctx1, {
+                type: 'scatter',
+                data: { datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } },
+                    scales: {
+                        x: { title: { display: true, text: 'Allocated Budget ($)' } },
+                        y: { title: { display: true, text: 'Completion %' } }
+                    }
+                }
+            });
+
+            // 2. City-wise Active (Bar)
+            const ctx2 = document.getElementById('chartCityActive').getContext('2d');
+            chartInstances.cityActive = new Chart(ctx2, {
+                type: 'bar',
+                data: { labels: [], datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            // 3. Timeline (Line)
+            const ctx3 = document.getElementById('chartTimeline').getContext('2d');
+            chartInstances.timeline = new Chart(ctx3, {
+                type: 'line',
+                data: { labels: [], datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, max: 100 } }
+                }
+            });
+            
+            // 4. Completion vs Days (Scatter)
+            const ctx4 = document.getElementById('chartCompletionDays').getContext('2d');
+            chartInstances.compDays = new Chart(ctx4, {
+                type: 'scatter',
+                data: { datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                     scales: {
+                        x: { title: { display: true, text: 'Days Remaining' } },
+                        y: { title: { display: true, text: 'Completion %' } }
+                    }
+                }
+            });
+        }
+
+        // --- UPDATE DASHBOARD LOGIC ---
+        function updateDashboard() {
+            // Get Filter Values
+            const cityVal = document.getElementById('cityFilter').value;
+            const statusVal = document.getElementById('statusFilter').value;
+            const monthVal = document.getElementById('monthFilter').value;
+
+            // Filter Data
+            let filtered = rawData.filter(d => {
+                return (cityVal === 'All' || d.city === cityVal) &&
+                       (statusVal === 'All' || d.status === statusVal) &&
+                       (monthVal === 'All' || d.month === monthVal);
+            });
+
+            // 1. Update KPIs
+            const totalProjects = filtered.length;
+            const totalBudget = filtered.reduce((sum, item) => sum + item.budget, 0);
+            const totalActive = filtered.reduce((sum, item) => sum + item.active, 0);
+            const avgComp = totalProjects > 0 ? (filtered.reduce((sum, item) => sum + item.completion, 0) / totalProjects).toFixed(1) : 0;
+
+            animateValue("kpi-projects", parseInt(document.getElementById("kpi-projects").innerText), totalProjects, 500);
+            document.getElementById("kpi-budget").innerText = "$" + (totalBudget / 1000000).toFixed(1) + "M";
+            document.getElementById("kpi-active").innerText = totalActive;
+            document.getElementById("kpi-completion").innerText = avgComp + "%";
+
+            // 2. Update Chart: Budget vs Completion
+            // Color by status
+            const datasetLive = filtered.filter(d => d.status === 'Live').map(d => ({x: d.budget, y: d.completion}));
+            const datasetNotLive = filtered.filter(d => d.status === 'Not Live').map(d => ({x: d.budget, y: d.completion}));
+            
+            chartInstances.budgetComp.data.datasets = [
+                { label: 'Live', data: datasetLive, backgroundColor: '#2E7D32' },
+                { label: 'Not Live', data: datasetNotLive, backgroundColor: '#ED6C02' }
+            ];
+            chartInstances.budgetComp.update();
+
+            // 3. Update Chart: City Active
+            const cityCounts = {};
+            filtered.forEach(d => {
+                if(d.active === 1) cityCounts[d.city] = (cityCounts[d.city] || 0) + 1;
+            });
+            chartInstances.cityActive.data.labels = Object.keys(cityCounts);
+            chartInstances.cityActive.data.datasets = [{
+                label: 'Active Customers',
+                data: Object.values(cityCounts),
+                backgroundColor: '#00A9F4'
+            }];
+            chartInstances.cityActive.update();
+
+            // 4. Update Chart: Timeline
+            const monthOrder = ['January', 'February', 'March', 'April'];
+            const monthlyComp = {};
+            months.forEach(m => monthlyComp[m] = []);
+            filtered.forEach(d => {
+                if(monthlyComp[d.month]) monthlyComp[d.month].push(d.completion);
+            });
+            
+            const avgByMonth = monthOrder.map(m => {
+                const arr = monthlyComp[m];
+                return arr.length ? (arr.reduce((a,b)=>a+b,0)/arr.length) : 0;
+            });
+
+            chartInstances.timeline.data.labels = monthOrder;
+            chartInstances.timeline.data.datasets = [{
+                label: 'Avg Completion %',
+                data: avgByMonth,
+                borderColor: '#051c2c',
+                backgroundColor: 'rgba(5, 28, 44, 0.1)',
+                fill: true,
+                tension: 0.3
+            }];
+            chartInstances.timeline.update();
+            
+            // 5. Update Chart: Completion vs Days
+            const compDaysData = filtered.map(d => ({x: d.days, y: d.completion}));
+            chartInstances.compDays.data.datasets = [{
+                label: 'Projects',
+                data: compDaysData,
+                backgroundColor: '#051c2c'
+            }];
+            chartInstances.compDays.update();
+
+            // 6. Update Table
+            const tbody = document.getElementById('dataTableBody');
+            tbody.innerHTML = '';
+            // Show top 10 for performance in this demo
+            filtered.slice(0, 10).forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${row.cem}</td>
+                    <td>${row.city}</td>
+                    <td>${row.feas}</td>
+                    <td>${row.hp}</td>
+                    <td><span class="status-badge ${row.status === 'Live' ? 'status-live' : 'status-pending'}">${row.status}</span></td>
+                    <td>${row.completion}%</td>
+                    <td>${row.days}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // --- UTILS ---
+        function animateValue(id, start, end, duration) {
+            if (start === end) return;
+            const range = end - start;
+            let current = start;
+            const increment = end > start ? 1 : -1;
+            const stepTime = Math.abs(Math.floor(duration / range));
+            const obj = document.getElementById(id);
+            const timer = setInterval(function() {
+                current += increment;
+                obj.innerHTML = current;
+                if (current == end) { clearInterval(timer); }
+            }, Math.max(stepTime, 10)); // Min 10ms
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => {
+                if(t.innerText.toLowerCase().includes(tab)) t.classList.add('active');
+            });
+
+            document.querySelectorAll('.dashboard-view, .code-view').forEach(c => c.classList.remove('active'));
+            if(tab === 'dashboard') {
+                document.getElementById('dashboardView').classList.add('active');
+            } else {
+                document.getElementById('codeView').classList.add('active');
+            }
+        }
+
+        // --- AUTO REFRESH SIMULATION ---
+        let timerVal = 60;
+        setInterval(() => {
+            timerVal--;
+            document.getElementById('timer').innerText = timerVal;
+            if(timerVal <= 0) {
+                timerVal = 60;
+                generateData(); // Simulate new data fetch
+                updateDashboard();
+            }
+        }, 1000);
+
+        // --- INITIALIZATION ---
+        window.onload = function() {
+            generateData();
+            initCharts();
+            updateDashboard();
+        };
+
+    </script>
+</body>
+</html>
